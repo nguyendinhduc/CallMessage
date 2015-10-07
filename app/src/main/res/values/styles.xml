@@ -1,0 +1,37 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <!--<style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">-->
+        <!--&lt;!&ndash; Customize your theme here. &ndash;&gt;-->
+    <!--</style>-->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!--<item name="colorPrimary">@color/colorPrimary</item> -->
+        <!--<item name="colorPrimaryDark">@color/colorPrimaryDark</item> -->
+        <!--<item name="colorControlHighlight">@color/accent_translucent</item> -->
+        <!--<item name="colorAccent">@color/accent</item>-->
+        <!--<item name="android:textColorPrimary">@color/textColorPrimary</item>-->
+        <!--<item name="android:textColorSecondary">@color/textColorSecondary</item>-->
+        <!--<item name="selectableItemBackground">@drawable/selectable_item_background</item>-->
+        <!--<item name="android:selectableItemBackground">@drawable/selectable_item_background</item>-->
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="android:textColorPrimary">@color/textColorPrimary</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="android:divider">@color/divider</item>
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="colorControlNormal">#c5c5c5</item>
+        <item name="colorControlActivated">@color/primary_dark</item>
+    </style>
+    <color name="primary">#2196F3</color>
+    <color name="primary_dark">#1976D2</color>
+    <color name="accent">#FFEB3B</color>
+    <color name="accent_translucent">#80FFEB3B</color>
+    <color name="accent_bright">#FFF493</color>
+    <color name="textColorPrimary">#000000</color>
+    <color name="textColorSecondary">#727272</color>
+    <color name="divider" >#666666</color>
+    <color name="window_background">#ffffff</color>
+
+</resources>
