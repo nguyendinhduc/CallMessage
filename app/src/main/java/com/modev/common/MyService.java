@@ -69,7 +69,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         mamanager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 //        amanager.setStreamMute(AudioManager.STREAM_NOTIFICATION, true);
 //        amanager.setStreamMute(AudioManager.STREAM_ALARM, true);
-        mamanager.setStreamMute(AudioManager.STREAM_MUSIC, true);
+//        mamanager.setStreamMute(AudioManager.STREAM_MUSIC, true);
 //        amanager.setStreamMute(AudioManager.STREAM_RING, true);
 //        amanager.setStreamMute(AudioManager.STREAM_SYSTEM, true);
 //        mStreamVolume = mamanager.getStreamVolume(AudioManager.STREAM_MUSIC); // getting system volume into var for later un-muting

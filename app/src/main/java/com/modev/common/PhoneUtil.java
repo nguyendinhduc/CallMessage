@@ -124,13 +124,6 @@ public class PhoneUtil {
     }
 
 
-    /**
-     * 074
-     * 通过反射调用的方法，接听电话，该方法只在android 2.3之前的系统上有效。
-     * 075
-     *
-     * @param context 076
-     */
 
     private static void answerRingingCallWithReflect(Context context) {
 
@@ -181,13 +174,7 @@ public class PhoneUtil {
     }
 
 
-    /**
-     * 104
-     * 伪造一个有线耳机插入，并按接听键的广播，让系统开始接听电话。
-     * 105
-     *
-     * @param context 106
-     */
+
 
     private static void answerRingingCallWithBroadcast(Context context) {
 
@@ -245,13 +232,6 @@ public class PhoneUtil {
     }
 
 
-    /**
-     * 138
-     * 接听电话
-     * 139
-     *
-     * @param context 140
-     */
 
     public static void answerRingingCall(Context context) {
 
@@ -267,14 +247,6 @@ public class PhoneUtil {
 
     }
 
-
-    /**
-     * 打电话
-     * 151
-     *
-     * @param context     152
-     * @param phoneNumber 153
-     */
 
     public static void callPhone(Context context, String phoneNumber) {
 
@@ -297,14 +269,7 @@ public class PhoneUtil {
     }
 
 
-    /**
-     * 166
-     * 拨电话
-     * 167
-     *
-     * @param context     168
-     * @param phoneNumber 169
-     */
+
 
     public static void dialPhone(Context context, String phoneNumber) {
 
