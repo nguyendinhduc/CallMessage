@@ -30,7 +30,7 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.app.RemoteInput;
 
 public class MyMessagingService extends Service {
-    private static final String TAG = MyMessagingService.class.getSimpleName();
+    private static final String TAG = "MyMessagingService";
 
     public static final String READ_ACTION =
             "com.android.internal.telephony.ACTION_MESSAGE_READ";

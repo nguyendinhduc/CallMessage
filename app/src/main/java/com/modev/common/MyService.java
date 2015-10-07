@@ -83,28 +83,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         tmgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         phoneListener = new MyPhoneStateListener();
         tmgr.listen(phoneListener, PhoneStateListener.LISTEN_CALL_STATE);
-        Log.i(TAG, "sersion phone: " + Build.VERSION.SDK_INT);
 
-        try {
-            Method m1 = tmgr.getClass().getDeclaredMethod("getITelephony");
-            m1.setAccessible(true);
-
-            iTelephony = m1.invoke(tmgr);
-            m3 = iTelephony.getClass().getDeclaredMethod("endCall");
-            Log.i(TAG, "onCreate_ok listner call");
-
-//            Method m2 = iTelephony.getClass().getDeclaredMethod("silenceRinger");
-//            Method m3 = iTelephony.getClass().getDeclaredMethod("endCall");
-        } catch (NoSuchMethodException e) {
-            Log.i(TAG, "message error NoSuchMethodException: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            Log.i(TAG, "message error IllegalAccessException: " + e.getMessage());
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            Log.i(TAG, "message error InvocationTargetException: " + e.getMessage());
-            e.printStackTrace();
-        }
         registerBroadcastMyService();
     }
 
@@ -226,7 +205,6 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         @Override
         public void onReadyForSpeech(Bundle params) {
             Log.d(TAG, "onReadyForSpeech"); //$NON-NLS-1$
-//            mamanager.setStreamVolume(AudioManager.STREAM_MUSIC, mStreamVolume, 0);
         }
 
         @Override
@@ -237,18 +215,6 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
                 Log.i(TAG, "onResults content: " + i);
             }
             if (matches.contains("no") || matches.contains("No") || matches.contains("nO") || matches.contains("NO")) {
-//                try {
-//
-//                    m3.invoke(iTelephony);
-//
-//                } catch (IllegalAccessException e) {
-//                    Log.i(TAG, "onResults IllegalAccessException: " + e.getMessage());
-//                    e.printStackTrace();
-//                } catch (InvocationTargetException e) {
-//                    Log.i(TAG, "onResults InvocationTargetException: " + e.getMessage());
-//                    e.printStackTrace();
-//                }
-//                ITelephony phoneMgr=ITelephony.Stub.asInterface(ServiceManager.getService(Context.TELEPHONY_SERVICE));
                 try {
                     Class clazz = Class.forName(tmgr.getClass().getName());
                     Method method = clazz.getDeclaredMethod("getITelephony");
