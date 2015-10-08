@@ -23,13 +23,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         startService();
-        btnStartBroadcastCall = (Button) findViewById( R.id.btnStartBroadcastCall);
+        btnStartBroadcastCall = (Button) findViewById(R.id.btnStartBroadcastCall);
         btnStartBroadcastCall.setOnClickListener(this);
         initComponent();
     }
 
     private void initComponent() {
         mySharedPreferences = new MySharedPreferences(this);
+        MyService.checkRegisterBroadcastCall = mySharedPreferences.isCheckRegisterBroadcastCall();
+        MyService.checkRegisterBroadcastMessage = mySharedPreferences.isCheckRegisterBroadcastMessage();
         btnStartBroadcastCall = (Button) findViewById(R.id.btnStartBroadcastCall);
         btnStartBroadcastCall.setOnClickListener(this);
         btnStartBroadcastMessage = (Button) findViewById(R.id.btnStartBroadcastMessage);
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         changeStateBroadcastMessage();
 
     }
+
     private void startService() {
         Log.i(TAG, "startService ");
         Intent intent = new Intent();
@@ -47,26 +50,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View v) {
-       switch (v.getId()) {
-           case R.id.btnStartBroadcastCall:
-               MyService.checkRegisterBroadcastCall = !MyService.checkRegisterBroadcastCall;
-               changeStateBroadcastCall();
-               break;
-           case R.id.btnStartBroadcastMessage:
-               MyService.checkRegisterBroadcastMessage = !MyService.checkRegisterBroadcastMessage;
-               changeStateBroadcastMessage();
-               break;
-       }
-    }
-    private void changeStateBroadcastCall() {
+        switch (v.getId()) {
+            case R.id.btnStartBroadcastCall:
+                MyService.checkRegisterBroadcastCall = !mySharedPreferences.isCheckRegisterBroadcastCall();
+                mySharedPreferences.setCheckRegisterBroadcastCall(MyService.checkRegisterBroadcastCall);
+                changeStateBroadcastCall();
+                break;
+            case R.id.btnStartBroadcastMessage:
+                MyService.checkRegisterBroadcastMessage = !mySharedPreferences.isCheckRegisterBroadcastMessage();
+                mySharedPreferences.setCheckRegisterBroadcastMessage(MyService.checkRegisterBroadcastMessage);
+                changeStateBroadcastMessage();
+                break;
+        }
         mySharedPreferences.setCheckRegisterBroadcastCall(MyService.checkRegisterBroadcastCall);
-        if (MyService.checkRegisterBroadcastCall ) {
+    }
+
+    private void changeStateBroadcastCall() {
+//        mySharedPreferences.setCheckRegisterBroadcastCall(MyService.checkRegisterBroadcastCall);
+        if (MyService.checkRegisterBroadcastCall) {
             btnStartBroadcastCall.setText("Stop broadcast call");
             Intent intent = new Intent();
             intent.setAction(CommonVL.REGISTER_BROADCAST_CALL);
             sendBroadcast(intent);
-        }
-        else {
+        } else {
             btnStartBroadcastCall.setText("Start broadcast call");
             Intent intent = new Intent();
             intent.setAction(CommonVL.UNREGISTER_BROADCAST_CALL);
@@ -77,14 +83,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void changeStateBroadcastMessage() {
-        mySharedPreferences.setCheckRegisterBroadcastMessage(MyService.checkRegisterBroadcastMessage);
-        if ( MyService.checkRegisterBroadcastMessage ) {
+//        mySharedPreferences.setCheckRegisterBroadcastMessage(MyService.checkRegisterBroadcastMessage);
+        if (MyService.checkRegisterBroadcastMessage) {
             btnStartBroadcastMessage.setText("Stop broadcast message");
             Intent intent = new Intent();
             intent.setAction(CommonVL.REGISTER_BROADCAST_MESSAGE);
             sendBroadcast(intent);
-        }
-        else {
+        } else {
             btnStartBroadcastMessage.setText("Start broadcast message");
             Intent intent = new Intent();
             intent.setAction(CommonVL.UNREGISTER_BROADCAST_MESSAGE);

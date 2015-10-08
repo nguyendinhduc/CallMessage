@@ -8,12 +8,17 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.AudioManager;
+import android.media.ToneGenerator;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.provider.ContactsContract;
 import android.speech.RecognitionListener;
@@ -50,17 +55,15 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
     private MyPhoneStateListener phoneListener;
     private MySharedPreferences mySharedPreferences;
 
-    private Object iTelephony = null;
-
-
-    private PackageManager packageManager;
-    //    private BroadcastSpeechToText broadcastSpeechToText = null;
     private AudioManager mamanager;
-    private int mStreamVolume;
     private SpeechRecognizer mSpeechRecognizer;
     private Intent mSpeechRecognizerIntent = null;
-    private boolean mIsListening = false;
-    private Method m3;
+    private ToneGenerator tg;
+
+    private boolean isNetwork;
+    private boolean isScreenOn;
+    private volatile boolean isCalling = false;
+    private boolean isMakePhoneCall = false;
 
     @Override
     public void onCreate() {
@@ -74,8 +77,12 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
 //        amanager.setStreamMute(AudioManager.STREAM_SYSTEM, true);
 //        mStreamVolume = mamanager.getStreamVolume(AudioManager.STREAM_MUSIC); // getting system volume into var for later un-muting
 //        mamanager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0); // setting system volume to zero, muting
+//        mamanager.setStreamVolume(AudioManager.STREAM_MUSIC,
+//                AudioManager.FLAG_SHOW_UI, AudioManager.FLAG_PLAY_SOUND);
+
 
         mySharedPreferences = new MySharedPreferences(this);
+
         mamanager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         mamanager.setStreamVolume(AudioManager.STREAM_MUSIC, mamanager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
         contentContacts = CommonMethod.instance().getContentContact(this);
@@ -100,16 +107,20 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "onStartCommand...");
+        this.isNetwork = isNetWork();
+        this.isScreenOn = ((PowerManager)this.getSystemService(Context.POWER_SERVICE)).isScreenOn();
+
         checkRegisterBroadcastCall = mySharedPreferences.isCheckRegisterBroadcastCall();
         if (checkRegisterBroadcastCall) registerBroadcastCall();
         else unregisterBroadcastCall();
+
         checkRegisterBroadcastMessage = mySharedPreferences.isCheckRegisterBroadcastMessage();
-        if (checkRegisterBroadcastMessage) registerBroadcastCall();
+        if (checkRegisterBroadcastMessage) registerBroadCastMessage();
         else unregisterBroadCastMessage();
         return START_STICKY;
     }
 
-    private void initComponent() {
+    private synchronized void initComponent() {
         if (mSpeechRecognizer != null) {
             mSpeechRecognizer.destroy();
             mSpeechRecognizer = null;
@@ -120,6 +131,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,
                 this.getPackageName());
+//        mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 10000);
 //        mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
 
         SpeechRecognitionListener listener = new SpeechRecognitionListener();
@@ -199,7 +211,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         @Override
         public void onPartialResults(Bundle partialResults) {
             Log.i(TAG, "onPartialResults");
-            mIsListening = false;
+//            mIsListening = false;
         }
 
         @Override
@@ -214,13 +226,15 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
             for (String i : matches) {
                 Log.i(TAG, "onResults content: " + i);
             }
-            if (matches.contains("no") || matches.contains("No") || matches.contains("nO") || matches.contains("NO")) {
+            if (MyService.this.isCalling &&
+                    (matches.contains("no") || matches.contains("No") || matches.contains("nO") || matches.contains("NO"))) {
                 try {
                     Class clazz = Class.forName(tmgr.getClass().getName());
                     Method method = clazz.getDeclaredMethod("getITelephony");
                     method.setAccessible(true);
                     ITelephony telephonyService = (ITelephony) method.invoke(tmgr);
                     telephonyService.endCall();
+//                    MyService.this.isCalling = false;
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 } catch (NoSuchMethodException e) {
@@ -232,26 +246,20 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
                 }
 
 
-            } else if (matches.contains("yes") || matches.contains("Yes") || matches.contains("yes") || matches.contains("YES")) {
-//                try {
-//                    Class clazz = Class.forName(tmgr.getClass().getName());
-//                    Method method = clazz.getDeclaredMethod("getITelephony");
-//                    method.setAccessible(true);
-//                    ITelephony telephonyService = (ITelephony) method.invoke(tmgr);
-//                    telephonyService.answerRingingCall();
-//                } catch (ClassNotFoundException e) {
-//                    e.printStackTrace();
-//                } catch (NoSuchMethodException e) {
-//                    e.printStackTrace();
-//                } catch (IllegalAccessException e) {
-//                    e.printStackTrace();
-//                } catch (InvocationTargetException e) {
-//                    e.printStackTrace();
-//                }
+            } else if (!MyService.this.isMakePhoneCall &&
+                    (matches.contains("yes") || matches.contains("Yes") ||
+                            matches.contains("yes") || matches.contains("YES")) ) {
                 PhoneUtil.answerRingingCall(MyService.this);
             } else {
                 initComponent();
                 mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+            }
+
+            if ( !MyService.this.isCalling ) {
+                ContentContact contentContact = MyService.this.getContactFromName(matches.get(0));
+                if ( contentContact != null ) {
+                    MyService.this.makePhoneCall(contentContact.getPhoneNumber());
+                }
             }
 
 
@@ -264,7 +272,8 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
     }
 
 
-    private void registerBroadcastCall() {
+    private synchronized void registerBroadcastCall() {
+        Log.i(TAG, "registerBroadcastCall");
         if (broadcastCall == null) {
             broadcastCall = new BroadcastCall();
             IntentFilter intentFilter = new IntentFilter();
@@ -281,7 +290,8 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
 
     }
 
-    private void unregisterBroadcastCall() {
+    private synchronized void unregisterBroadcastCall() {
+        Log.i(TAG, "unregisterBroadcastCall");
         if (broadcastCall != null) {
             unregisterReceiver(broadcastCall);
             broadcastCall = null;
@@ -291,12 +301,16 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
             textToSpeech.shutdown();
             textToSpeech = null;
         }
+        stopSpeechRecognizer();
+    }
+
+    private void stopSpeechRecognizer() {
         if (mSpeechRecognizer != null) {
+            mSpeechRecognizer.cancel();
             mSpeechRecognizer.destroy();
             mSpeechRecognizer = null;
         }
     }
-
 
     private class BroadcastCall extends BroadcastReceiver {
         @Override
@@ -308,7 +322,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         }
     }
 
-    private void registerBroadCastMessage() {
+    private synchronized void registerBroadCastMessage() {
         if (broadcastMessage == null) {
             broadcastMessage = new BroadcastMessage();
             IntentFilter intentFilter = new IntentFilter();
@@ -317,7 +331,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
         }
     }
 
-    private void unregisterBroadCastMessage() {
+    private synchronized void unregisterBroadCastMessage() {
         if (broadcastMessage != null) {
             unregisterReceiver(broadcastMessage);
             broadcastMessage = null;
@@ -342,6 +356,9 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
             intentFilter.addAction(CommonVL.REGISTER_BROADCAST_MESSAGE);
             intentFilter.addAction(CommonVL.UNREGISTER_BROADCAST_CALL);
             intentFilter.addAction(CommonVL.UNREGISTER_BROADCAST_MESSAGE);
+            intentFilter.addAction(Intent.ACTION_SCREEN_ON);
+            intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
+            intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
             registerReceiver(broadcastMyService, intentFilter);
         }
     }
@@ -357,7 +374,7 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
 
     private class BroadcastMyService extends BroadcastReceiver {
         @Override
-        public void onReceive(Context context, Intent intent) {
+        public synchronized void onReceive(Context context, Intent intent) {
             switch (intent.getAction()) {
                 case CommonVL.REGISTER_BROADCAST_CALL:
                     registerBroadcastCall();
@@ -371,6 +388,28 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
                 case CommonVL.UNREGISTER_BROADCAST_MESSAGE:
                     unregisterBroadCastMessage();
                     break;
+                case Intent.ACTION_SCREEN_ON:
+
+                    MyService.this.isScreenOn = true;
+                    if ( MyService.this.checkRegisterBroadcastCall && MyService.this.mSpeechRecognizer == null ) {
+                        Log.i(TAG, "android.intent.action.ACTION_SCREEN_ON");
+                        MyService.this.initComponent();
+                        MyService.this.mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+                    }
+                    break;
+                case Intent.ACTION_SCREEN_OFF:
+                    if ( !MyService.this.isCalling ){
+                        Log.i(TAG, "android.intent.action.SCREEN_OFF");
+                        MyService.this.isScreenOn = false;
+                        MyService.this.stopSpeechRecognizer();
+                    }
+                    break;
+                case "android.net.conn.CONNECTIVITY_CHANGE":
+                    Log.i(TAG, "android.net.conn.CONNECTIVITY_CHANGE network info: " + isNetWork());
+                    MyService.this.isNetwork = MyService.this.isNetWork();
+                    break;
+//                case "android.net.wifi.WIFI_STATE_CHANGED":
+//                    break;
             }
         }
     }
@@ -400,8 +439,10 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
     private class MyPhoneStateListener extends PhoneStateListener {
         @Override
         public synchronized void onCallStateChanged(int state, String incomingNumber) {
+            Log.i(TAG, "state: " + state);
             switch (state) {
                 case TelephonyManager.CALL_STATE_RINGING:
+                    MyService.this.isCalling = true;
                     String content;
                     if (incomingNumber.charAt(0) == '+') {
                         incomingNumber = "0" + incomingNumber.substring(2);
@@ -416,143 +457,56 @@ public class MyService extends Service implements TextToSpeech.OnInitListener {
                     Log.i(TAG, "content: " + content);
                     MyService.this.startTalking(content);
                     break;
-
+                //endcall
                 case TelephonyManager.CALL_STATE_IDLE:
+                    MyService.this.isCalling = false;
+                    MyService.this.isMakePhoneCall = false;
+//                    if ( MyService.this.checkRegisterBroadcastCall ) {
+//                        Log.i(TAG, "treeeeeeeeeeee");
+//                        initComponent();
+//                        MyService.this.mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+//                    }
+
+                    checkLoopTextToSpeechCall = false;
+                    if ( textToSpeech != null) textToSpeech.stop();
+                    break;
+                //answer
                 case TelephonyManager.CALL_STATE_OFFHOOK:
                     checkLoopTextToSpeechCall = false;
-                    textToSpeech.stop();
+                    if ( textToSpeech != null) textToSpeech.stop();
+                    if ( MyService.this.checkRegisterBroadcastCall ) {
+                        Log.i(TAG, "treeeeeeeeeeee");
+                        initComponent();
+                        MyService.this.mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+                    }
                     break;
             }
             super.onCallStateChanged(state, incomingNumber);
         }
     }
 
-//    private static void answerRingingCallWithReflect(Context context) {
-//
-//        try {
-//
-//            Object telephonyObject = getTelephonyObject(context);
-//
-//            if (null != telephonyObject) {
-//
-//                Class telephonyClass = telephonyObject.getClass();
-//
-//                Method endCallMethod = telephonyClass.getMethod("answerRingingCall");
-//
-//                endCallMethod.setAccessible(true);
-//
-//
-//                endCallMethod.invoke(telephonyObject);
-//
-//                // ITelephony iTelephony = (ITelephony) telephonyObject;
-//
-//                // iTelephony.answerRingingCall();
-//
-//            }
-//
-//        } catch (SecurityException e) {
-//
-//            e.printStackTrace();
-//
-//        } catch (IllegalArgumentException e) {
-//
-//            e.printStackTrace();
-//
-//        } catch (IllegalAccessException e) {
-//
-//            e.printStackTrace();
-//
-//        } catch (InvocationTargetException e) {
-//
-//            e.printStackTrace();
-//
-//        } catch (NoSuchMethodException e) {
-//
-//            e.printStackTrace();
-//
-//        }
-//
-//
-//    }
-//
-//
-//    private static void answerRingingCallWithBroadcast(Context context) {
-//        AudioManager localAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-//
-//        //判断是否插上了耳机
-//
-//        boolean isWiredHeadsetOn = localAudioManager.isWiredHeadsetOn();
-//
-//        if (!isWiredHeadsetOn) {
-//
-//            Intent headsetPluggedIntent = new Intent(Intent.ACTION_HEADSET_PLUG);
-//
-//            headsetPluggedIntent.putExtra("state", 1);
-//
-//            headsetPluggedIntent.putExtra("microphone", 0);
-//
-//            headsetPluggedIntent.putExtra("name", "");
-//
-//            context.sendBroadcast(headsetPluggedIntent);
-//
-//
-//            Intent meidaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-//
-//            KeyEvent keyEvent = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_HEADSETHOOK);
-//
-//            meidaButtonIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
-//
-//            context.sendOrderedBroadcast(meidaButtonIntent, null);
-//
-//
-//            Intent headsetUnpluggedIntent = new Intent(Intent.ACTION_HEADSET_PLUG);
-//
-//            headsetUnpluggedIntent.putExtra("state", 0);
-//
-//            headsetUnpluggedIntent.putExtra("microphone", 0);
-//
-//            headsetUnpluggedIntent.putExtra("name", "");
-//
-//            context.sendBroadcast(headsetUnpluggedIntent);
-//
-//
-//        } else {
-//
-//            Intent meidaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-//
-//            KeyEvent keyEvent = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_HEADSETHOOK);
-//
-//            meidaButtonIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
-//
-//            context.sendOrderedBroadcast(meidaButtonIntent, null);
-//
-//        }
-//
-//    }
-//
-//
-//    /**
-//     * 138
-//     * 接听电话
-//     * 139
-//     *
-//     * @param context 140
-//     */
-//
-//    public static void answerRingingCall(Context context) {
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {  //2.3或2.3以上系统
-//
-//            answerRingingCallWithBroadcast(context);
-//
-//        } else {
-//
-//            answerRingingCallWithReflect(context);
-//
-//        }
-//
-//    }
+    private boolean isNetWork() {
+        ConnectivityManager connectivityManager = (ConnectivityManager)MyService.this.
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        return ( networkInfo != null && networkInfo.isConnected());
+    }
 
+    private ContentContact getContactFromName( String name ) {
+        for ( ContentContact i : contentContacts ) {
+            if ( name.equals(i.getName()) ) return i;
+        }
+        return null;
+    }
+
+    private void makePhoneCall(String phoneNumber) {
+        Intent intent = new Intent(Intent.ACTION_CALL);
+        intent.setData(Uri.parse("tel:" + phoneNumber));
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        this.isMakePhoneCall = true;
+        MyService.this.isCalling = true;
+        startActivity(intent);
+    }
 
     @Override
     public void onDestroy() {
